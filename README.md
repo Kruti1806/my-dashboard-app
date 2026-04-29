@@ -6,7 +6,7 @@ A full-stack Next.js 14 application featuring JWT-based authentication, middlewa
 
 ## 🔗 Live Demo
 
-> _Will be updated after Vercel deployment_
+🔗 https://my-dashboard-app-sigma.vercel.app
 
 ---
 
