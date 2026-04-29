@@ -1,145 +1,253 @@
-# My Dashboard App
+# MyApp — Authentication Dashboard
 
-## Overview
-This is a Next.js 14 (App Router) demo dashboard app with simple JWT-based authentication, protected routes via middleware, and a user management table backed by mock data.
+A full-stack Next.js 14 application featuring JWT-based authentication, middleware-protected routes, and a server-side paginated user management dashboard built with TanStack Table.
 
-## Tech stack
-- Next.js 14 + App Router
-- TypeScript
-- Tailwind CSS
-- `jose` (JWT sign/verify)
-- `cookies-next` (client-side cookie helpers)
-- `@tanstack/react-table` (table rendering)
-- Prettier
+---
 
-## Setup
-Install dependencies:
+## 🔗 Live Demo
+
+> _Will be updated after Vercel deployment_
+
+---
+
+## 🔐 Test Credentials
+
+| Role  | Email             | Password |
+|-------|-------------------|----------|
+| Admin | admin@example.com | admin123 |
+| User  | user@example.com  | user123  |
+
+---
+
+## ✅ Features
+
+- JWT Authentication with httpOnly cookies
+- Protected routes via Next.js Middleware (Edge Runtime)
+- Login page with validation and error messages
+- Auto-redirect to `/login` if not authenticated
+- Logout clears token and redirects to `/login`
+- User management data table with:
+  - Server-side pagination
+  - Column sorting (ID, Name, Email)
+  - Debounced live search (no focus loss)
+  - Rows per page selector (10 / 20 / 50)
+- Static protected pages — Profile & Settings
+- Fully typed with TypeScript strict mode
+- Clean, consistent code with Prettier formatting
+
+---
+
+## 🛠 Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| Next.js 14 (App Router) | Framework |
+| TypeScript (strict) | Type safety |
+| Tailwind CSS | Styling |
+| TanStack Table v8 | Data table |
+| jose | JWT sign & verify (Edge-compatible) |
+| cookies-next | Client-side cookie helpers |
+| Prettier | Code formatting |
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/
+│   │   └── login/           # Public login page
+│   ├── (protected)/
+│   │   ├── layout.tsx       # Protected layout with Navbar + Sidebar
+│   │   ├── dashboard/       # User management data table
+│   │   ├── profile/         # Static profile page
+│   │   └── settings/        # Static settings page
+│   └── api/
+│       ├── login/           # POST /api/login
+│       └── users/           # GET /api/users
+├── components/
+│   ├── DataTable/           # DataTable, Toolbar, Pagination, Columns
+│   ├── layout/              # Navbar, Sidebar
+│   └── ui/                  # Button, Input, Spinner, ErrorMessage
+├── hooks/
+│   └── useUsers.ts          # Data fetching hook with AbortController
+├── lib/
+│   ├── auth.ts              # JWT sign & verify using jose
+│   ├── constants.ts         # App-wide constants
+│   └── utils.ts             # Utility functions
+├── types/
+│   └── index.ts             # Shared TypeScript types
+└── middleware.ts             # Route protection (Edge Runtime)
+```
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Kruti1806/my-dashboard-app.git
+cd my-dashboard-app
+```
+
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-Create `.env.local`:
+### 3. Create environment file
 
-```bash
+Create a `.env.local` file in the project root:
+
+```env
 JWT_SECRET=supersecret_dev_key_123
 ```
 
-Run the dev server:
+### 4. Run the development server
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Architecture
-### App Router structure
-- Public auth pages live under `src/app/(auth)/...`
-- Protected pages live under `src/app/(protected)/...`
+---
 
-### Middleware protection
-`src/middleware.ts` protects:
+## 🏗 Architecture & Flow
+
+### Authentication Flow
+
+```
+User visits /dashboard
+      ↓
+Middleware checks auth_token cookie
+      ↓
+Token missing/invalid → redirect to /login
+Token valid → allow access
+      ↓
+User submits login form
+      ↓
+POST /api/login validates credentials
+      ↓
+JWT signed and stored as httpOnly cookie
+      ↓
+Redirect to /dashboard
+```
+
+### Route Protection
+
+`src/middleware.ts` protects these routes:
 - `/dashboard`
 - `/profile`
 - `/settings`
 
-If the `auth_token` cookie is missing/invalid, requests are redirected to `/login`. Verification uses `jose` so it works in the Edge runtime.
+Uses `jose` for JWT verification — fully compatible with the **Edge Runtime** (no Node.js-only APIs).
 
-### Auth flow
-1. User submits credentials on `/login`
-2. `POST /api/login` validates against mock credentials and sets an `httpOnly` `auth_token` cookie
-3. Middleware verifies the cookie on protected routes
-4. `/dashboard` calls `GET /api/users` which also verifies the cookie before returning user data
+### Data Table Flow
 
-## API docs
-### `POST /api/login`
-**Body**
-
-```json
-{ "email": "admin@example.com", "password": "admin123" }
+```
+URL params (page, limit, sortBy, order, search)
+      ↓
+useUsers hook fetches GET /api/users
+      ↓
+API verifies auth_token cookie → 401 if invalid
+      ↓
+Filters + sorts + paginates 100 mock users
+      ↓
+Returns PaginatedUsersResponse
+      ↓
+DataTable renders results
 ```
 
-**Success**
+---
 
+## 📡 API Reference
+
+### `POST /api/login`
+
+**Request Body**
+```json
+{
+  "email": "admin@example.com",
+  "password": "admin123"
+}
+```
+
+**Success — 200**
 ```json
 { "success": true }
 ```
 
-**Failure (401)**
-
+**Failure — 401**
 ```json
 { "error": "Invalid credentials" }
 ```
 
+---
+
 ### `GET /api/users`
-Requires `auth_token` cookie.
 
-**Query params**
-- `page` (number)
-- `limit` (number)
-- `sortBy` (string: `id` | `name` | `email`)
-- `order` (string: `asc` | `desc`)
-- `search` (string)
+Requires a valid `auth_token` cookie. Returns `401` if missing or invalid.
 
-**Response**
-Returns a `PaginatedUsersResponse`:
-- `data`: list of users
-- `total`: total matching results
-- `page`: current page
-- `limit`: page size
-- `totalPages`: number of pages
+**Query Parameters**
 
-**Unauthorized (401)**
+| Param  | Type                  | Default | Description               |
+|--------|-----------------------|---------|---------------------------|
+| page   | number                | 1       | Page number               |
+| limit  | number                | 10      | Items per page (10/20/50) |
+| sortBy | `id` \| `name` \| `email` | id  | Column to sort by         |
+| order  | `asc` \| `desc`       | asc     | Sort direction            |
+| search | string                | —       | Filter by name or email   |
 
+**Success — 200**
+```json
+{
+  "data": [
+    { "id": 1, "name": "User 1", "email": "user1@example.com" }
+  ],
+  "total": 100,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 10
+}
+```
+
+**Unauthorized — 401**
 ```json
 { "error": "Unauthorized" }
 ```
 
-## Mock credentials
-- `admin@example.com` / `admin123`
-- `user@example.com` / `user123`
+---
 
-## Deploy to Vercel
-1. Push the repository to GitHub.
-2. In Vercel, click **New Project** and import the repo.
-3. Add environment variables in the Vercel project settings:
-   - `JWT_SECRET`
-4. Deploy.
+## 📐 Coding Standards
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+| Rule | Convention |
+|------|------------|
+| Components | PascalCase — `DataTable.tsx` |
+| Variables / Functions | camelCase — `onSearchChange` |
+| Constants | UPPER_SNAKE_CASE — `TOKEN_COOKIE_NAME` |
+| Types | No `any` — strict TypeScript throughout |
+| Errors | Always shown to the user, never silent |
+| Formatting | Prettier enforced project-wide |
 
-## Getting Started
+---
 
-First, run the development server:
+## ☁️ Deploying to Vercel
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Push the repository to GitHub
+2. Go to [vercel.com](https://vercel.com) → click **New Project**
+3. Import the `my-dashboard-app` repository
+4. Add the following environment variable in Vercel project settings:
+   - **Key:** `JWT_SECRET`
+   - **Value:** `supersecret_dev_key_123`
+5. Click **Deploy**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 👩‍💻 Author
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Kruti Kantariya**
+GitHub: [@Kruti1806](https://github.com/Kruti1806)s
